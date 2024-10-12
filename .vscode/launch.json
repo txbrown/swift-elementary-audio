@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "sourceLanguages": ["swift"],
+      "args": [],
+      "cwd": "${workspaceFolder:swift-elementary-audio}",
+      "name": "Debug swift-elementary-audio",
+      "program": "${workspaceFolder:swift-elementary-audio}/.build/debug/swift-elementary-audio",
+      "preLaunchTask": "swift: Build Debug swift-elementary-audio"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "sourceLanguages": ["swift"],
+      "args": [],
+      "cwd": "${workspaceFolder:swift-elementary-audio}",
+      "name": "Release swift-elementary-audio",
+      "program": "${workspaceFolder:swift-elementary-audio}/.build/release/swift-elementary-audio",
+      "preLaunchTask": "swift: Build Release swift-elementary-audio"
+    }
+  ]
+}
