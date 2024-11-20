@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-elementary-audio",   
+    name: "swift-elementary-audio",
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
     ],
@@ -11,26 +11,26 @@ let package = Package(
             name: "cxxElementaryAudio",
             path: "Sources/cxxElementaryAudio",
             exclude: [
-                "./ElementaryAudio/wasm", 
+                "./ElementaryAudio/wasm",
                 "./ElementaryAudio/cli",
                 "./ElementaryAudio/runtime/CMakeLists.txt",
                 "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/LICENSE.txt",
                 "./ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/README.md",
                 "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/dsp/README.md",
-                "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/dsp/LICENSE.txt"
+                "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/dsp/LICENSE.txt",
             ],
             sources: [
                 "./ElementaryAudio/runtime",
                 "SimpleMath.cpp",
-                "CustomNode.cpp"
+                "CustomNode.cpp",
             ],
             cxxSettings: [
                 .headerSearchPath("./ElementaryAudio/runtime"),
                 .headerSearchPath("./include/"),
                 .headerSearchPath("."),
                 .unsafeFlags([
-                    "-std=c++17",
-                ])
+                    "-std=c++20",
+                ]),
             ]
         ),
         .executableTarget(
@@ -40,5 +40,5 @@ let package = Package(
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
     ],
-    cxxLanguageStandard: .cxx17
+    cxxLanguageStandard: .cxx20
 )
