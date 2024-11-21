@@ -3,6 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "swift-elementary-audio",
+    platforms: [
+        .macOS(.v12),
+        .iOS(.v15),
+    ],
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
     ],
@@ -21,7 +25,6 @@ let package = Package(
             ],
             sources: [
                 "./ElementaryAudio/runtime",
-                "SimpleMath.cpp",
                 "CustomNode.cpp",
             ],
             cxxSettings: [
