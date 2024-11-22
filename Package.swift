@@ -4,11 +4,12 @@ import PackageDescription
 let package = Package(
     name: "swift-elementary-audio",
     platforms: [
-        .macOS(.v12),
+        .macOS(.v14),
         .iOS(.v15),
     ],
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
+        .library(name: "ElementaryAudio", targets: ["ElementaryAudio"]),
     ],
     targets: [
         .target(
@@ -34,11 +35,18 @@ let package = Package(
                 .unsafeFlags([
                     "-std=c++20",
                 ]),
+                .define("SWIFT_BRIDGING_ENABLED", to: "1"),
             ]
+        ),
+        .target(
+            name: "ElementaryAudio",
+            dependencies: ["cxxElementaryAudio"],
+            path: "Sources/ElementaryAudio",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
         .executableTarget(
             name: "swift-elementary-audio",
-            dependencies: ["cxxElementaryAudio"],
+            dependencies: ["ElementaryAudio"],
             path: "Sources/swift-elementary-audio",
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),

@@ -1,14 +1,21 @@
 import AVFoundation
+import CoreAudio
 import cxxElementaryAudio
+import ElementaryAudio
 
 @main
 struct MyApp {
     static func main() {
         let engine = AudioEngine()
 
-        try! engine.start()
+        do {
+            try engine.start()
+            print("Audio engine running. Press enter to quit...")
+        } catch {
+            print("Failed to start audio engine:", error)
+            exit(1)
+        }
 
-        print("Audio engine running. Press enter to quit...")
         _ = readLine()
 
         engine.stop()
@@ -21,20 +28,20 @@ class AudioEngine {
     private let runtime: ElemRuntime
 
     init() {
-        runtime = ElemRuntime()
+        runtime = ElemRuntime.getInstance()
         let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
 
-        var capturedRuntime = runtime
+        let capturedRuntime: ElemRuntime = runtime
 
         let renderBlock: AVAudioSourceNodeRenderBlock = { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard let buffer = ablPointer.first else { return noErr }
             guard let ptr = buffer.mData?.assumingMemoryBound(to: Float.self) else { return noErr }
 
-            var node = CustomNode(1, 44100, 512)
-            _ = node.setPropertyWrapper("value", 0.8)
+            let node = CustomNodeWrapper(id: 1, sampleRate: 44100, blockSize: 512)
+            _ = node.setProperty("value", value: 0.8)
 
-            var outputPtr = ptr
+            let outputPtr = ptr
             var outputPtrs: [UnsafeMutablePointer<Float>?] = [outputPtr]
 
             let context = elem.FloatBlockContext(
@@ -45,7 +52,7 @@ class AudioEngine {
                 userData: nil
             )
 
-            node.processWrapper(context)
+            node.process(context)
 
             capturedRuntime.process(
                 nil,
