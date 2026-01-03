@@ -5,7 +5,7 @@ let package = Package(
     name: "swift-elementary-audio",
     platforms: [
         .macOS(.v14),
-        .iOS(.v15),
+        .iOS(.v17),
     ],
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
@@ -28,14 +28,14 @@ let package = Package(
                 "./ElementaryAudio/runtime",
                 "CustomNode.cpp",
             ],
+            publicHeadersPath: "include",
             cxxSettings: [
                 .headerSearchPath("./ElementaryAudio/runtime"),
-                .headerSearchPath("./include/"),
                 .headerSearchPath("."),
-                .unsafeFlags([
-                    "-std=c++20",
-                ]),
                 .define("SWIFT_BRIDGING_ENABLED", to: "1"),
+            ],
+            linkerSettings: [
+                .linkedLibrary("c++"),
             ]
         ),
         .target(

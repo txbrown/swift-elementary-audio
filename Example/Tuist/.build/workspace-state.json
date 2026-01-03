@@ -1,0 +1,24 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "swift-elementary-audio",
+          "kind" : "fileSystem",
+          "location" : "/Users/ricardoabreu/Development/swift-elementary-audio",
+          "name" : "swift-elementary-audio"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/ricardoabreu/Development/swift-elementary-audio"
+        },
+        "subpath" : "swift-elementary-audio"
+      }
+    ]
+  },
+  "version" : 6
+}
