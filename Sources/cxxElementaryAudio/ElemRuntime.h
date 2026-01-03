@@ -2,20 +2,23 @@
 #include "./ElementaryAudio/runtime/elem/Runtime.h"
 #include "CustomNode.h"
 #include <swift/bridging>
-#include <iostream>
+#include <memory>
 
 class ElemRuntime {
 public:
-    elem::Runtime<float> *runtime = nullptr;
-
-    // Singleton-like accessor
+    // Singleton accessor - guaranteed thread-safe initialization (C++11)
     static ElemRuntime &getInstance() {
-        static ElemRuntime instance; // Guaranteed to be created once and live for the program's lifetime
+        static ElemRuntime instance;
         return instance;
     }
 
-    ElemRuntime(const ElemRuntime &) = delete; // Non-copyable
+    ElemRuntime(const ElemRuntime &) = delete;
     ElemRuntime &operator=(const ElemRuntime &) = delete;
+
+    // Access the underlying runtime (for advanced use cases)
+    elem::Runtime<float>* getRuntime() {
+        return runtime.get();
+    }
 
     void registerCustomNode(const char *name) {
         if (runtime) {
@@ -34,14 +37,16 @@ public:
         }
     }
 
-private:
-    ElemRuntime() {
-        runtime = new elem::Runtime<float>(44100.0, 512);
+    // Explicit shutdown for clean teardown (optional - destructor handles cleanup)
+    void shutdown() {
+        runtime.reset();
     }
 
-    ~ElemRuntime() {
-        std::cout << "Deleting ElemRuntime";
-        if (runtime)
-            delete runtime;
-    }
+private:
+    std::unique_ptr<elem::Runtime<float>> runtime;
+
+    ElemRuntime()
+        : runtime(std::make_unique<elem::Runtime<float>>(44100.0, 512)) {}
+
+    ~ElemRuntime() = default;
 } SWIFT_IMMORTAL_REFERENCE;
