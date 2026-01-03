@@ -6,3 +6,12 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# Tuist generated files
+Derived/
+*.xcodeproj
+*.xcworkspace
+
+# Claude Code
+.claude/
+.cache/
