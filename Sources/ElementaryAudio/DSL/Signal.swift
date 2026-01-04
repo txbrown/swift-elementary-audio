@@ -74,7 +74,7 @@ public struct Signal: AudioNode, ExpressibleByFloatLiteral, ExpressibleByInteger
     // MARK: - Internal Access
 
     /// Access the underlying node (for encoding)
-    internal var underlyingNode: any AudioNode { wrapped }
+    public var underlyingNode: any AudioNode { wrapped }
 }
 
 // MARK: - Constant Node

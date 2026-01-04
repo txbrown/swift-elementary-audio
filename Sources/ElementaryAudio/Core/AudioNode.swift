@@ -26,6 +26,9 @@ public protocol AudioNode: Sendable {
     /// The Elementary Audio node type identifier (e.g., "sin", "mul", "phasor")
     static var nodeType: String { get }
 
+    /// The node type identifier for this instance (may differ from static type for parameterized nodes)
+    var nodeType: String { get }
+
     /// Unique identifier for this node instance
     var nodeId: NodeID { get }
 
@@ -44,13 +47,7 @@ extension AudioNode {
 
     /// Default no children
     public var children: [any AudioNode] { [] }
-}
 
-// MARK: - Node Type Helpers
-
-extension AudioNode {
-    /// The node type identifier for this instance
-    public var nodeType: String {
-        Self.nodeType
-    }
+    /// Default nodeType returns the static type
+    public var nodeType: String { Self.nodeType }
 }

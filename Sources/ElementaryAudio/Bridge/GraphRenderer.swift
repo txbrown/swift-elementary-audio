@@ -1,0 +1,173 @@
+import Foundation
+import cxxElementaryAudio
+
+/// Renders an AudioGraph to the Elementary Audio runtime
+///
+/// GraphRenderer converts Swift audio graphs into runtime instructions
+/// and sends them to the C++ Elementary Audio runtime for processing.
+public final class GraphRenderer: @unchecked Sendable {
+
+    /// Errors that can occur during graph rendering
+    public enum RenderError: Error, CustomStringConvertible {
+        case runtimeNotAvailable
+        case encodingFailed(String)
+        case renderFailed(Int32)
+
+        public var description: String {
+            switch self {
+            case .runtimeNotAvailable:
+                return "Elementary Audio runtime is not available"
+            case .encodingFailed(let message):
+                return "Failed to encode graph: \(message)"
+            case .renderFailed(let code):
+                return "Runtime render failed with code: \(code)"
+            }
+        }
+    }
+
+    // Track node IDs we've created for cleanup
+    private var createdNodeIds: Set<Int32> = []
+    // Track root IDs for activation
+    private var currentRootIds: [Int32] = []
+
+    /// Creates a new graph renderer
+    public init() {}
+
+    /// Renders an audio graph to the runtime
+    ///
+    /// - Parameter graph: The audio graph to render
+    /// - Throws: `RenderError` if rendering fails
+    public func render(_ graph: AudioGraph) throws {
+        // Encode the graph to instructions
+        var encoder = InstructionEncoder()
+        encoder.encode(graph)
+
+        let instructions = encoder.allInstructions
+
+        // Get the runtime singleton
+        let runtime = ElemRuntime.getInstance()
+
+        // Collect root IDs and send instructions
+        var rootIds: [Int32] = []
+
+        for instruction in instructions {
+            if instruction.type == .activateRoots, let ids = instruction.rootIds {
+                rootIds = ids.map { $0.rawValue }
+                continue // Handle activation at the end
+            }
+            if instruction.type == .commitUpdates {
+                continue // Handle commit at the end
+            }
+
+            let result = try sendInstruction(instruction, to: runtime)
+            if result != 0 {
+                throw RenderError.renderFailed(result)
+            }
+
+            // Track created nodes
+            if instruction.type == .createNode, let nodeId = instruction.nodeId {
+                createdNodeIds.insert(nodeId.rawValue)
+            }
+        }
+
+        // Activate roots and commit
+        if !rootIds.isEmpty {
+            currentRootIds = rootIds
+            let result = activateAndCommit(rootIds, runtime: runtime)
+            if result != 0 {
+                throw RenderError.renderFailed(result)
+            }
+        }
+    }
+
+    /// Sends a single instruction to the runtime
+    private func sendInstruction(_ instruction: InstructionEncoder.Instruction, to runtime: ElemRuntime) throws -> Int32 {
+        switch instruction.type {
+        case .createNode:
+            guard let nodeId = instruction.nodeId,
+                  let nodeType = instruction.nodeType else {
+                throw RenderError.encodingFailed("CREATE_NODE missing nodeId or nodeType")
+            }
+            return runtime.createNode(nodeId.rawValue, std.string(nodeType))
+
+        case .deleteNode:
+            guard let nodeId = instruction.nodeId else {
+                throw RenderError.encodingFailed("DELETE_NODE missing nodeId")
+            }
+            return runtime.deleteNode(nodeId.rawValue)
+
+        case .appendChild:
+            guard let parentId = instruction.nodeId,
+                  let childId = instruction.childId else {
+                throw RenderError.encodingFailed("APPEND_CHILD missing parentId or childId")
+            }
+            return runtime.appendChild(parentId.rawValue, childId.rawValue)
+
+        case .setProperty:
+            guard let nodeId = instruction.nodeId,
+                  let key = instruction.propertyKey,
+                  let value = instruction.propertyValue else {
+                throw RenderError.encodingFailed("SET_PROPERTY missing required fields")
+            }
+
+            switch value {
+            case .number(let num):
+                return runtime.setPropertyNumber(nodeId.rawValue, std.string(key), num)
+            case .string(let str):
+                return runtime.setPropertyString(nodeId.rawValue, std.string(key), std.string(str))
+            case .boolean(let b):
+                return runtime.setPropertyNumber(nodeId.rawValue, std.string(key), b ? 1.0 : 0.0)
+            case .array(_), .object(_):
+                // Arrays and objects are not directly supported yet
+                return 0
+            }
+
+        case .activateRoots, .commitUpdates:
+            // Handled separately
+            return 0
+        }
+    }
+
+    /// Activates root nodes and commits updates
+    private func activateAndCommit(_ rootIds: [Int32], runtime: ElemRuntime) -> Int32 {
+        // Handle empty array case separately to avoid pointer issues
+        guard !rootIds.isEmpty else {
+            // For empty roots, pass a valid pointer with count 0
+            var dummy: Int32 = 0
+            return withUnsafePointer(to: &dummy) { ptr in
+                runtime.activateRootsAndCommit(ptr, 0)
+            }
+        }
+
+        // Use Swift array with withUnsafeBufferPointer for C interop
+        return rootIds.withUnsafeBufferPointer { buffer in
+            runtime.activateRootsAndCommit(buffer.baseAddress, buffer.count)
+        }
+    }
+
+    /// Clears all nodes from the runtime
+    public func clear() {
+        // Just clear tracking - nodes will be replaced on next render
+        // The runtime handles node replacement internally
+        createdNodeIds.removeAll()
+        currentRootIds.removeAll()
+    }
+
+    /// Resets the runtime
+    public func reset() {
+        ElemRuntime.getInstance().reset()
+    }
+}
+
+// MARK: - Convenience Extensions
+
+extension GraphRenderer {
+    /// Renders a graph built with the DSL
+    ///
+    /// - Parameter builder: A closure that builds the audio graph
+    /// - Throws: `RenderError` if rendering fails
+    public func render(@AudioGraphBuilder _ builder: () -> AudioGraph) throws {
+        let graph = builder()
+        try render(graph)
+    }
+}

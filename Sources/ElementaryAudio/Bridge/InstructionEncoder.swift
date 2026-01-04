@@ -70,26 +70,38 @@ public struct InstructionEncoder: Sendable {
 
     /// Encodes a single node and its children recursively
     private mutating func encodeNode(_ node: any AudioNode) {
+        // Unwrap Signal to get the actual node
+        let actualNode: any AudioNode
+        let actualNodeType: String
+
+        if let signal = node as? Signal {
+            actualNode = signal.underlyingNode
+            actualNodeType = signal.wrappedNodeType
+        } else {
+            actualNode = node
+            actualNodeType = node.nodeType
+        }
+
         // Skip if already encoded
-        guard !encodedNodes.contains(node.nodeId.rawValue) else { return }
-        encodedNodes.insert(node.nodeId.rawValue)
+        guard !encodedNodes.contains(actualNode.nodeId.rawValue) else { return }
+        encodedNodes.insert(actualNode.nodeId.rawValue)
 
         // First encode all children
-        for child in node.children {
+        for child in actualNode.children {
             encodeNode(child)
         }
 
         // Create this node
-        createNode(id: node.nodeId, type: node.nodeType)
+        createNode(id: actualNode.nodeId, type: actualNodeType)
 
         // Set properties
-        for (key, value) in node.properties {
-            setProperty(nodeId: node.nodeId, key: key, value: value)
+        for (key, value) in actualNode.properties {
+            setProperty(nodeId: actualNode.nodeId, key: key, value: value)
         }
 
         // Append children
-        for child in node.children {
-            appendChild(parentId: node.nodeId, childId: child.nodeId)
+        for child in actualNode.children {
+            appendChild(parentId: actualNode.nodeId, childId: child.nodeId)
         }
     }
 
