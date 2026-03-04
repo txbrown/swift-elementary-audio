@@ -112,6 +112,75 @@ public enum El {
         Signal(UnaryMathNode(.round, x))
     }
 
+    // MARK: - Comparison & Binary Math
+    //
+    // These mirror the operator overloads in NodeOperators.swift (<, <=, >, >=, %).
+    // Both APIs are intentional: operators enable natural math-like expressions
+    // (e.g., `phasor < delayed`), while El.* functions provide explicit DSP graph
+    // construction that reads clearly in composed pipelines (e.g., `El.lt(a, b)`).
+
+    /// Less than comparison (returns 1 if a < b, else 0)
+    ///
+    /// Note: The underlying Elementary Audio runtime node type is `"le"`,
+    /// but this Swift API uses `lt` to match standard semantics and avoid
+    /// confusion with "less-or-equal".
+    public static func lt(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.lt, a, b))
+    }
+
+    /// Less than or equal comparison (returns 1 if a <= b, else 0)
+    public static func leq(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.leq, a, b))
+    }
+
+    /// Greater than comparison (returns 1 if a > b, else 0)
+    ///
+    /// Note: The underlying Elementary Audio runtime node type is `"ge"`,
+    /// but this Swift API uses `gt` to match standard semantics.
+    public static func gt(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.gt, a, b))
+    }
+
+    /// Greater than or equal comparison (returns 1 if a >= b, else 0)
+    public static func geq(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.geq, a, b))
+    }
+
+    /// Equality comparison (returns 1 if a == b, else 0)
+    public static func eq(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.eq, a, b))
+    }
+
+    /// Modulo (a mod b)
+    public static func mod(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.mod, a, b))
+    }
+
+    /// Minimum of two signals
+    public static func min(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.min, a, b))
+    }
+
+    /// Maximum of two signals
+    public static func max(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.max, a, b))
+    }
+
+    /// Raises a to the power of b
+    public static func pow(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.pow, a, b))
+    }
+
+    /// Logical AND (returns 1 if both a and b are non-zero)
+    public static func and(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.and, a, b))
+    }
+
+    /// Logical OR (returns 1 if either a or b is non-zero)
+    public static func or(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.or, a, b))
+    }
+
     // MARK: - Oscillators
 
     /// Creates a phasor (ramp oscillator from 0 to 1)

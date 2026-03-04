@@ -4,8 +4,8 @@ import PackageDescription
 let package = Package(
     name: "swift-elementary-audio",
     platforms: [
-        .macOS(.v14),
-        .iOS(.v17),
+        .macOS("13.3"), // C++ interop requires >=13.3; no enum case available
+        .iOS("16.4"),   // C++ interop requires >=16.4; no enum case available
     ],
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
@@ -67,6 +67,12 @@ let package = Package(
             name: "ElementaryPlayground",
             dependencies: ["ElementaryFlow"],
             path: "Sources/ElementaryPlayground",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
+        .testTarget(
+            name: "ElementaryAudioTests",
+            dependencies: ["ElementaryAudio"],
+            path: "Tests/ElementaryAudioTests",
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
     ],

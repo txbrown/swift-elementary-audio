@@ -106,6 +106,44 @@ public:
         return runtime->applyInstructions(batch);
     }
 
+    // Set a boolean property on a node
+    int32_t setPropertyBoolean(int32_t nodeId, const std::string& key, bool value) {
+        if (!runtime) return -1;
+
+        elem::js::Array instruction;
+        instruction.push_back(elem::js::Number(3)); // SET_PROPERTY
+        instruction.push_back(elem::js::Number(nodeId));
+        instruction.push_back(elem::js::String(key));
+        instruction.push_back(elem::js::Boolean(value));
+
+        elem::js::Array batch;
+        batch.push_back(instruction);
+
+        return runtime->applyInstructions(batch);
+    }
+
+    // Set an array property on a node (for seq data, etc.)
+    int32_t setPropertyArray(int32_t nodeId, const std::string& key, const double* values, size_t count) {
+        if (!runtime) return -1;
+        if (count > 0 && values == nullptr) return -1;
+
+        elem::js::Array valArray;
+        for (size_t i = 0; i < count; i++) {
+            valArray.push_back(elem::js::Number(values[i]));
+        }
+
+        elem::js::Array instruction;
+        instruction.push_back(elem::js::Number(3)); // SET_PROPERTY
+        instruction.push_back(elem::js::Number(nodeId));
+        instruction.push_back(elem::js::String(key));
+        instruction.push_back(valArray);
+
+        elem::js::Array batch;
+        batch.push_back(instruction);
+
+        return runtime->applyInstructions(batch);
+    }
+
     // Set a string property on a node
     int32_t setPropertyString(int32_t nodeId, const std::string& key, const std::string& value) {
         if (!runtime) return -1;
