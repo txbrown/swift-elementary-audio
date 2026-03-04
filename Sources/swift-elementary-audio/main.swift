@@ -95,7 +95,6 @@ struct ExampleCard: View {
                     if isPlaying {
                         Image(systemName: "speaker.wave.3.fill")
                             .foregroundColor(.green)
-                            .symbolEffect(.variableColor.iterative)
                     }
                 }
 
