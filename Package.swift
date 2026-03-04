@@ -27,6 +27,9 @@ let package = Package(
                 "./ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/README.md",
                 "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/dsp/README.md",
                 "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/dsp/LICENSE.txt",
+                // choc is header-only — exclude the entire directory from compilation
+                // (headers are still found via headerSearchPath)
+                "ElementaryAudio/runtime/elem/third-party/choc",
             ],
             sources: [
                 "./ElementaryAudio/runtime",

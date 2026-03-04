@@ -618,15 +618,7 @@ class AudioPlaybackEngine {
             guard let buffer = ablPointer.first else { return noErr }
             guard let ptr = buffer.mData?.assumingMemoryBound(to: Float.self) else { return noErr }
 
-            let context = elem.FloatBlockContext(
-                inputData: nil,
-                numInputChannels: 0,
-                outputData: ptr,
-                numSamples: Int(frameCount),
-                userData: nil
-            )
-
-            capturedNode.process(context)
+            capturedNode.processSimple(ptr, Int(frameCount))
 
             return noErr
         }

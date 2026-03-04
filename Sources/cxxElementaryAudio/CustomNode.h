@@ -56,6 +56,9 @@ public:
     int setPropertyWrapper(const char *key, float val);
     void processWrapper(const elem::FloatBlockContext &ctx);
 
+    // Swift-friendly process that takes a raw output buffer (avoids needing to construct BlockContext from Swift)
+    void processSimple(float* outputBuffer, size_t numSamples);
+
 private:
     std::atomic<int> refCount;
 

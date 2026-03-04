@@ -218,7 +218,7 @@ void CustomNode::process(elem::FloatBlockContext const &ctx) {
         if (phase3 >= 1.0f) phase3 -= 1.0f;
 
         // Apply amplitude modulation and final volume
-        ctx.outputData[i] = sample * currentValue * ampMod;
+        ctx.outputData[0][i] = sample * currentValue * ampMod;
     }
 }
 
@@ -228,5 +228,25 @@ int CustomNode::setPropertyWrapper(const char *key, float val) {
 }
 
 void CustomNode::processWrapper(const elem::FloatBlockContext &ctx) {
+    process(ctx);
+}
+
+void CustomNode::processSimple(float* outputBuffer, size_t numSamples) {
+    float* outputPtrs[1] = {outputBuffer};
+    elem::BlockEvents inputEvents;
+    elem::BlockEvents outputEvents;
+
+    elem::FloatBlockContext ctx {
+        nullptr,        // inputData
+        0,              // numInputChannels
+        outputPtrs,     // outputData (float**)
+        1,              // numOutputChannels
+        numSamples,     // numSamples
+        nullptr,        // userData
+        true,           // active
+        inputEvents,    // inputEvents
+        outputEvents,   // outputEvents
+    };
+
     process(ctx);
 }

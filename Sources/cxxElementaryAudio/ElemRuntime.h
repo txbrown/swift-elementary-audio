@@ -1,5 +1,6 @@
 #pragma once
 #include "./ElementaryAudio/runtime/elem/Runtime.h"
+#include "./ElementaryAudio/runtime/elem/AudioBufferResource.h"
 #include "CustomNode.h"
 #include <swift/bridging>
 #include <memory>
@@ -61,28 +62,15 @@ public:
         return runtime->applyInstructions(batch);
     }
 
-    // Delete a node
-    int32_t deleteNode(int32_t nodeId) {
-        if (!runtime) return -1;
-
-        elem::js::Array instruction;
-        instruction.push_back(elem::js::Number(1)); // DELETE_NODE
-        instruction.push_back(elem::js::Number(nodeId));
-
-        elem::js::Array batch;
-        batch.push_back(instruction);
-
-        return runtime->applyInstructions(batch);
-    }
-
-    // Append a child node to a parent
-    int32_t appendChild(int32_t parentId, int32_t childId) {
+    // Append a child node to a parent (v4: requires childOutputChannel for multi-channel support)
+    int32_t appendChild(int32_t parentId, int32_t childId, int32_t childOutputChannel = 0) {
         if (!runtime) return -1;
 
         elem::js::Array instruction;
         instruction.push_back(elem::js::Number(2)); // APPEND_CHILD
         instruction.push_back(elem::js::Number(parentId));
         instruction.push_back(elem::js::Number(childId));
+        instruction.push_back(elem::js::Number(childOutputChannel));
 
         elem::js::Array batch;
         batch.push_back(instruction);
@@ -185,6 +173,13 @@ public:
         batch.push_back(commitInstruction);
 
         return runtime->applyInstructions(batch);
+    }
+
+    // Explicit garbage collection (v4: replaces implicit deleteNode)
+    void gc() {
+        if (runtime) {
+            runtime->gc();
+        }
     }
 
     // Reset the graph

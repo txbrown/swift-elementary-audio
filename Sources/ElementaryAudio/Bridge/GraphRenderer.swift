@@ -38,6 +38,9 @@ public final class GraphRenderer: @unchecked Sendable {
     /// - Parameter graph: The audio graph to render
     /// - Throws: `RenderError` if rendering fails
     public func render(_ graph: AudioGraph) throws {
+        // Garbage-collect nodes from the previous render that have finished fading out
+        gc()
+
         // Encode the graph to instructions
         var encoder = InstructionEncoder()
         encoder.encode(graph)
@@ -90,18 +93,12 @@ public final class GraphRenderer: @unchecked Sendable {
             }
             return runtime.createNode(nodeId.rawValue, std.string(nodeType))
 
-        case .deleteNode:
-            guard let nodeId = instruction.nodeId else {
-                throw RenderError.encodingFailed("DELETE_NODE missing nodeId")
-            }
-            return runtime.deleteNode(nodeId.rawValue)
-
         case .appendChild:
             guard let parentId = instruction.nodeId,
                   let childId = instruction.childId else {
                 throw RenderError.encodingFailed("APPEND_CHILD missing parentId or childId")
             }
-            return runtime.appendChild(parentId.rawValue, childId.rawValue)
+            return runtime.appendChild(parentId.rawValue, childId.rawValue, instruction.childOutputChannel ?? 0)
 
         case .setProperty:
             guard let nodeId = instruction.nodeId,
@@ -155,6 +152,11 @@ public final class GraphRenderer: @unchecked Sendable {
         // The runtime handles node replacement internally
         createdNodeIds.removeAll()
         currentRootIds.removeAll()
+    }
+
+    /// Runs garbage collection on the runtime, releasing unused nodes
+    public func gc() {
+        ElemRuntime.getInstance().gc()
     }
 
     /// Resets the runtime

@@ -6,10 +6,9 @@ import Foundation
 /// of instructions that the Elementary Audio runtime can execute to build
 /// and update the processing graph.
 public struct InstructionEncoder: Sendable {
-    /// Instruction types matching the C++ runtime
+    /// Instruction types matching the C++ runtime (v4: deleteNode removed, GC handles cleanup)
     public enum InstructionType: Int32, Sendable {
         case createNode = 0
-        case deleteNode = 1
         case appendChild = 2
         case setProperty = 3
         case activateRoots = 4
@@ -24,6 +23,7 @@ public struct InstructionEncoder: Sendable {
         public let propertyKey: String?
         public let propertyValue: PropertyValue?
         public let childId: NodeID?
+        public let childOutputChannel: Int32?
         public let rootIds: [NodeID]?
 
         init(type: InstructionType,
@@ -32,6 +32,7 @@ public struct InstructionEncoder: Sendable {
              propertyKey: String? = nil,
              propertyValue: PropertyValue? = nil,
              childId: NodeID? = nil,
+             childOutputChannel: Int32? = nil,
              rootIds: [NodeID]? = nil) {
             self.type = type
             self.nodeId = nodeId
@@ -39,6 +40,7 @@ public struct InstructionEncoder: Sendable {
             self.propertyKey = propertyKey
             self.propertyValue = propertyValue
             self.childId = childId
+            self.childOutputChannel = childOutputChannel
             self.rootIds = rootIds
         }
     }
@@ -116,20 +118,17 @@ public struct InstructionEncoder: Sendable {
         ))
     }
 
-    /// Deletes a node
-    public mutating func deleteNode(id: NodeID) {
-        instructions.append(Instruction(
-            type: .deleteNode,
-            nodeId: id
-        ))
-    }
-
     /// Appends a child node to a parent
-    public mutating func appendChild(parentId: NodeID, childId: NodeID) {
+    /// - Parameters:
+    ///   - parentId: The parent node ID
+    ///   - childId: The child node ID
+    ///   - outputChannel: The child's output channel (0 for mono nodes)
+    public mutating func appendChild(parentId: NodeID, childId: NodeID, outputChannel: Int32 = 0) {
         instructions.append(Instruction(
             type: .appendChild,
             nodeId: parentId,
-            childId: childId
+            childId: childId,
+            childOutputChannel: outputChannel
         ))
     }
 
@@ -178,10 +177,8 @@ extension InstructionEncoder.Instruction: CustomStringConvertible {
         switch type {
         case .createNode:
             return "CREATE(\(nodeId?.rawValue ?? -1), \(nodeType ?? "?"))"
-        case .deleteNode:
-            return "DELETE(\(nodeId?.rawValue ?? -1))"
         case .appendChild:
-            return "APPEND(\(nodeId?.rawValue ?? -1), \(childId?.rawValue ?? -1))"
+            return "APPEND(\(nodeId?.rawValue ?? -1), \(childId?.rawValue ?? -1), ch:\(childOutputChannel ?? 0))"
         case .setProperty:
             return "SET(\(nodeId?.rawValue ?? -1), \(propertyKey ?? "?"), \(propertyValue.map { "\($0)" } ?? "?"))"
         case .activateRoots:
