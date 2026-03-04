@@ -2,21 +2,20 @@ import XCTest
 @testable import ElementaryAudio
 
 final class ComparisonNodeTests: XCTestCase {
-    // MARK: - El.lt (less than)
+    // MARK: - El.le (less than)
 
-    func testLtCreatesCorrectNodeType() {
+    func testLeCreatesCorrectNodeType() {
         let a: Signal = 1.0
         let b: Signal = 2.0
-        let result = El.lt(a, b)
+        let result = El.le(a, b)
         XCTAssertEqual(result.underlyingNode.nodeType, "le")
     }
 
-    func testLtHasTwoChildrenInCorrectOrder() {
+    func testLeHasTwoChildrenInCorrectOrder() {
         let a = El.const(1.0)
         let b = El.const(2.0)
-        let result = El.lt(a, b)
+        let result = El.le(a, b)
         XCTAssertEqual(result.underlyingNode.children.count, 2)
-        // child 0 = lhs (a), child 1 = rhs (b)
         XCTAssertEqual(result.underlyingNode.children[0].nodeId, a.underlyingNode.nodeId)
         XCTAssertEqual(result.underlyingNode.children[1].nodeId, b.underlyingNode.nodeId)
     }
@@ -28,17 +27,17 @@ final class ComparisonNodeTests: XCTestCase {
         XCTAssertEqual(result.underlyingNode.nodeType, "leq")
     }
 
-    // MARK: - El.gt (greater than)
+    // MARK: - El.ge (greater than)
 
-    func testGtCreatesCorrectNodeType() {
-        let result = El.gt(Signal(1.0), Signal(2.0))
+    func testGeCreatesCorrectNodeType() {
+        let result = El.ge(Signal(1.0), Signal(2.0))
         XCTAssertEqual(result.underlyingNode.nodeType, "ge")
     }
 
-    func testGtHasChildrenInCorrectOrder() {
+    func testGeHasChildrenInCorrectOrder() {
         let a = El.const(5.0)
         let b = El.const(3.0)
-        let result = El.gt(a, b)
+        let result = El.ge(a, b)
         XCTAssertEqual(result.underlyingNode.children[0].nodeId, a.underlyingNode.nodeId)
         XCTAssertEqual(result.underlyingNode.children[1].nodeId, b.underlyingNode.nodeId)
     }
@@ -104,14 +103,14 @@ final class ComparisonNodeTests: XCTestCase {
     func testComparisonNodesComposeInGraph() {
         let phasor = El.phasor(440.0)
         let delayed = El.z(phasor)
-        let trigger = El.lt(phasor, delayed)
+        let trigger = El.le(phasor, delayed)
 
         XCTAssertEqual(trigger.underlyingNode.nodeType, "le")
         XCTAssertEqual(trigger.underlyingNode.children.count, 2)
     }
 
     func testBinaryMathComposesWithSeq() {
-        let trigger = El.lt(Signal(0.5), Signal(0.3))
+        let trigger = El.le(Signal(0.5), Signal(0.3))
         let freq = El.seq(trigger, [880, 660, 660, 660])
         let output = El.cycle(freq) * 0.5
 

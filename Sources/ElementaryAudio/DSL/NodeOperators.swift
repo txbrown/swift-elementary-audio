@@ -84,7 +84,7 @@ public func % (lhs: Signal, rhs: Signal) -> Signal {
 
 /// Less than comparison
 public func < (lhs: Signal, rhs: Signal) -> Signal {
-    Signal(BinaryMathNode(.lt, lhs, rhs))
+    Signal(BinaryMathNode(.le, lhs, rhs))
 }
 
 public func < (lhs: Signal, rhs: Double) -> Signal {
@@ -102,7 +102,7 @@ public func <= (lhs: Signal, rhs: Double) -> Signal {
 
 /// Greater than comparison
 public func > (lhs: Signal, rhs: Signal) -> Signal {
-    Signal(BinaryMathNode(.gt, lhs, rhs))
+    Signal(BinaryMathNode(.ge, lhs, rhs))
 }
 
 public func > (lhs: Signal, rhs: Double) -> Signal {
@@ -135,9 +135,9 @@ public struct BinaryMathNode: AudioNode {
     public enum Operation: String, Sendable {
         case add, sub, mul, div, mod
         case min, max, pow
-        case lt = "le"      // less than
+        case le             // less than
         case leq            // less than or equal
-        case gt = "ge"      // greater than
+        case ge             // greater than
         case geq            // greater than or equal
         case eq             // equal
         case and, or

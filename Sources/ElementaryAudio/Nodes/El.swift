@@ -120,12 +120,8 @@ public enum El {
     // construction that reads clearly in composed pipelines (e.g., `El.lt(a, b)`).
 
     /// Less than comparison (returns 1 if a < b, else 0)
-    ///
-    /// Note: The underlying Elementary Audio runtime node type is `"le"`,
-    /// but this Swift API uses `lt` to match standard semantics and avoid
-    /// confusion with "less-or-equal".
-    public static func lt(_ a: Signal, _ b: Signal) -> Signal {
-        Signal(BinaryMathNode(.lt, a, b))
+    public static func le(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.le, a, b))
     }
 
     /// Less than or equal comparison (returns 1 if a <= b, else 0)
@@ -134,11 +130,8 @@ public enum El {
     }
 
     /// Greater than comparison (returns 1 if a > b, else 0)
-    ///
-    /// Note: The underlying Elementary Audio runtime node type is `"ge"`,
-    /// but this Swift API uses `gt` to match standard semantics.
-    public static func gt(_ a: Signal, _ b: Signal) -> Signal {
-        Signal(BinaryMathNode(.gt, a, b))
+    public static func ge(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(BinaryMathNode(.ge, a, b))
     }
 
     /// Greater than or equal comparison (returns 1 if a >= b, else 0)
