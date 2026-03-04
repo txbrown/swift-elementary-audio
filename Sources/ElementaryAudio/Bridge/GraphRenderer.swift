@@ -116,9 +116,13 @@ public final class GraphRenderer: @unchecked Sendable {
             case .string(let str):
                 return runtime.setPropertyString(nodeId.rawValue, std.string(key), std.string(str))
             case .boolean(let b):
-                return runtime.setPropertyNumber(nodeId.rawValue, std.string(key), b ? 1.0 : 0.0)
-            case .array(_), .object(_):
-                // Arrays and objects are not directly supported yet
+                return runtime.setPropertyBoolean(nodeId.rawValue, std.string(key), b)
+            case .array(let arr):
+                return arr.withUnsafeBufferPointer { buffer in
+                    runtime.setPropertyArray(nodeId.rawValue, std.string(key), buffer.baseAddress, buffer.count)
+                }
+            case .object:
+                // Nested objects are not supported
                 return 0
             }
 
@@ -156,6 +160,56 @@ public final class GraphRenderer: @unchecked Sendable {
     /// Resets the runtime
     public func reset() {
         ElemRuntime.getInstance().reset()
+    }
+
+    // MARK: - Runtime Lifecycle & Processing
+
+    /// Reinitializes the runtime with the given sample rate and block size
+    ///
+    /// Call this before rendering a graph if you need a specific sample rate
+    /// or block size different from the default (44100 Hz / 512 samples).
+    ///
+    /// - Parameters:
+    ///   - sampleRate: The sample rate in Hz
+    ///   - blockSize: The processing block size in samples
+    public func initialize(sampleRate: Double, blockSize: Int) {
+        let runtime = ElemRuntime.getInstance()
+        runtime.initialize(sampleRate, Int32(blockSize))
+        createdNodeIds.removeAll()
+        currentRootIds.removeAll()
+    }
+
+    /// Sets a numeric property on a rendered node by its ID
+    ///
+    /// Use this to update controllable const nodes (e.g., tempo, mute)
+    /// without re-rendering the entire graph.
+    ///
+    /// - Parameters:
+    ///   - nodeId: The node ID to update
+    ///   - key: The property key (e.g., "value")
+    ///   - value: The new numeric value
+    /// - Returns: 0 on success, non-zero error code on failure
+    @discardableResult
+    public func setProperty(nodeId: NodeID, key: String, value: Double) -> Int32 {
+        let runtime = ElemRuntime.getInstance()
+        return runtime.setPropertyNumber(nodeId.rawValue, std.string(key), value)
+    }
+
+    /// Processes audio through the rendered graph
+    ///
+    /// Call this from an audio render callback to generate samples.
+    ///
+    /// - Parameters:
+    ///   - outputData: Pointer to output channel buffers
+    ///   - outputChannels: Number of output channels
+    ///   - numSamples: Number of samples to generate
+    public func process(
+        outputData: UnsafeMutablePointer<UnsafeMutablePointer<Float>?>,
+        outputChannels: Int,
+        numSamples: Int
+    ) {
+        let runtime = ElemRuntime.getInstance()
+        runtime.process(nil, 0, outputData, outputChannels, numSamples)
     }
 }
 
