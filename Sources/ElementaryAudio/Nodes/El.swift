@@ -30,6 +30,19 @@ public enum El {
         Signal(ConstNode(value))
     }
 
+    /// Creates a constant signal with a key for live updates via setProperty
+    ///
+    /// This is essential for parameters that change during playback (tempo, mute, etc.)
+    /// without rebuilding the entire graph.
+    ///
+    /// - Parameters:
+    ///   - key: Unique key for setProperty targeting
+    ///   - value: The constant value
+    /// - Returns: A keyed constant signal
+    public static func const(key: String, value: Double) -> Signal {
+        Signal(KeyedConstNode(key: key, value: value))
+    }
+
     /// Creates a signal representing the current sample rate
     ///
     /// - Returns: A signal containing the sample rate in Hz
@@ -347,6 +360,24 @@ public enum El {
 
     // MARK: - Sequences
 
+    /// Creates a step sequencer with keyed identity (seq2)
+    ///
+    /// This is the core sequencing primitive that steps through a pattern of
+    /// values on each trigger pulse. The `key` prop ensures that setProperty
+    /// updates to the `seq` array don't reset the counter position.
+    ///
+    /// - Parameters:
+    ///   - key: Unique key for in-place seq updates via setPropertyArray
+    ///   - seq: Array of values to sequence through
+    ///   - hold: Whether to hold values between steps (default true)
+    ///   - loop: Whether to loop the sequence (default true)
+    ///   - trigger: The trigger signal that advances the sequence
+    ///   - gate: The gate signal (typically a playing/on-off control)
+    /// - Returns: The sequenced signal
+    public static func seq2(key: String, seq: [Double], hold: Bool = true, loop: Bool = true, _ trigger: Signal, _ gate: Signal) -> Signal {
+        Signal(Seq2Node(key: key, seq: seq, hold: hold, loop: loop, trigger: trigger, gate: gate))
+    }
+
     /// Creates a step sequencer
     ///
     /// - Parameters:
@@ -357,6 +388,63 @@ public enum El {
     /// - Returns: The sequenced signal
     public static func seq(_ trigger: Signal, _ values: [Double], hold: Bool = true, loop: Bool = true) -> Signal {
         Signal(SequenceNode(trigger: trigger, values: values, hold: hold, loop: loop))
+    }
+
+    // MARK: - Sync Phasor
+
+    /// Creates a phasor that resets to 0 on the rising edge of a gate signal.
+    ///
+    /// Used for transport clock synchronization: ramps from 0–1 at the given
+    /// frequency, but resets to 0 when the gate transitions from 0 to 1.
+    ///
+    /// - Parameters:
+    ///   - frequency: The frequency in Hz
+    ///   - gate: The gate signal (resets phasor on 0→1 transition)
+    /// - Returns: A resettable phasor signal
+    public static func syncphasor(_ frequency: Signal, _ gate: Signal) -> Signal {
+        Signal(SyncPhasorNode(frequency: frequency, reset: gate))
+    }
+
+    public static func syncphasor(_ frequency: Double, _ gate: Signal) -> Signal {
+        syncphasor(Signal(frequency), gate)
+    }
+
+    // MARK: - Sample Playback
+
+    /// Plays a sample from the VFS in trigger mode (drums, one-shots)
+    ///
+    /// - Parameters:
+    ///   - path: VFS key of the loaded audio resource
+    ///   - mode: Playback mode ("trigger" or "gate")
+    ///   - key: Optional unique key for setProperty targeting
+    ///   - trigger: Trigger signal (plays sample on rising edge)
+    ///   - rate: Playback rate (1.0 = normal, 2.0 = octave up, etc.)
+    /// - Returns: The sample playback signal
+    public static func sample(path: String, mode: String = "trigger", key: String? = nil, _ trigger: Signal, _ rate: Signal) -> Signal {
+        Signal(SampleNode(path: path, mode: mode, key: key, trigger: trigger, rate: rate))
+    }
+
+    // MARK: - Multiply
+
+    /// Element-wise multiplication of two signals
+    ///
+    /// While the `*` operator handles multiply on Signal, `El.mul` provides
+    /// the explicit DSP graph node with optional keying.
+    ///
+    /// - Parameters:
+    ///   - a: First signal
+    ///   - b: Second signal
+    /// - Returns: The product signal
+    public static func mul(_ a: Signal, _ b: Signal) -> Signal {
+        Signal(MulNode(a, b))
+    }
+
+    public static func mul(_ a: Signal, _ b: Double) -> Signal {
+        mul(a, Signal(b))
+    }
+
+    public static func mul(_ a: Double, _ b: Signal) -> Signal {
+        mul(Signal(a), b)
     }
 
     // MARK: - Analysis

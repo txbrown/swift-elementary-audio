@@ -202,6 +202,26 @@ public final class GraphRenderer: @unchecked Sendable {
     /// Call this from an audio render callback to generate samples.
     ///
     /// - Parameters:
+    ///   - outputData: Array of output channel buffer pointers
+    ///   - outputChannels: Number of output channels
+    ///   - numSamples: Number of samples to generate
+    public func process(
+        outputData: [UnsafeMutablePointer<Float>?],
+        outputChannels: Int,
+        numSamples: Int
+    ) {
+        var mutableData = outputData
+        mutableData.withUnsafeMutableBufferPointer { buf in
+            let runtime = ElemRuntime.getInstance()
+            runtime.process(nil, 0, buf.baseAddress, outputChannels, numSamples)
+        }
+    }
+
+    /// Processes audio through the rendered graph (raw pointer variant)
+    ///
+    /// Call this from an audio render callback to generate samples.
+    ///
+    /// - Parameters:
     ///   - outputData: Pointer to output channel buffers
     ///   - outputChannels: Number of output channels
     ///   - numSamples: Number of samples to generate
