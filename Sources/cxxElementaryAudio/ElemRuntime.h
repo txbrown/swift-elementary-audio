@@ -198,26 +198,6 @@ public:
     // VFS / Audio Resource Loading
     // ========================================================================
 
-    /// Load an audio file and add it to the runtime's shared resource map.
-    /// The file is loaded using miniaudio (WAV, MP3, FLAC, etc.), deinterleaved,
-    /// and stored as an AudioBufferResource.
-    /// Returns true on success, false on failure (or if key already exists).
-    bool loadAudioFile(const std::string& vfsKey, const std::string& filePath) {
-        if (!runtime) return false;
-
-        // Load audio file using AVAudioFile (macOS/iOS) since we're on Apple platforms
-        // and miniaudio is not linked in the swift-elementary-audio package.
-        // This is a spike — we use a simple WAV loader.
-        
-        // For the spike, we use AudioToolbox/ExtendedAudioFile to load.
-        // The actual implementation in production would use AudioResourceLoader
-        // from the RN project or a standalone loader.
-        //
-        // For now, we'll load using a simple raw PCM approach.
-        // The RN project uses miniaudio's ma_decoder.
-        return loadAudioFileWithAVFoundation(vfsKey, filePath);
-    }
-
     /// Add a pre-loaded audio buffer to the runtime's shared resource map.
     /// Data format: deinterleaved float32 (ch0 samples, ch1 samples, ...)
     /// Returns true on success, false if key already exists.
@@ -226,7 +206,7 @@ public:
                         size_t numChannels,
                         size_t numSamples) {
         if (!runtime) return false;
-        
+
         auto resource = std::make_unique<elem::AudioBufferResource>(
             channelData, numChannels, numSamples);
         return runtime->addSharedResource(vfsKey, std::move(resource));
@@ -243,15 +223,6 @@ public:
     }
 
 private:
-#ifdef __APPLE__
-    bool loadAudioFileWithAVFoundation(const std::string& vfsKey, const std::string& filePath) {
-        // This will be called from Swift, which has access to AVFoundation.
-        // For C++ only, we defer to the Swift bridge.
-        // The actual implementation lives in VFSLoader.swift
-        return false; // Stub — Swift override will handle this
-    }
-#endif
-
     std::unique_ptr<elem::Runtime<float>> runtime;
 
     ElemRuntime()

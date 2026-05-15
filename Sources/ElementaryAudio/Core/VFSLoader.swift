@@ -2,18 +2,17 @@
 //  VFSLoader.swift
 //  ElementaryAudio
 //
-//  Loads audio files into the Elementary Runtime's Virtual File System (VFS).
-//  Uses AVFoundation for file loading, then adds the deinterleaved float32
-//  data as AudioBufferResource entries via the C++ bridge.
+//  Loads audio files into the Elementary Runtime's shared resource map
+//  via AVFoundation for deinterleaved float32 buffer loading.
 //
 
 import AVFoundation
 import cxxElementaryAudio
 
-/// Loads audio files into the Elementary Runtime's VFS (shared resource map).
+/// Loads audio files into the Elementary Runtime's shared resource map.
 ///
 /// The VFS is how `el.sample({ path: "kick", mode: "trigger" })` finds its audio data.
-/// You load files by key, then reference them by that key in the graph DSL.
+/// Load files by key, then reference them by that key in the graph DSL.
 public final class VFSLoader {
 
     /// Load an audio file from disk and add it to the runtime's shared resource map.
@@ -48,67 +47,51 @@ public final class VFSLoader {
         let numChannels = Int(format.channelCount)
         let numSamples = Int(buffer.frameLength)
 
-        // Build deinterleaved channel data arrays
-        var channelArrays: [[Float]] = []
-        for ch in 0..<numChannels {
-            var channelData = [Float](repeating: 0, count: numSamples)
-            if let floatChannelData = buffer.floatChannelData {
-                for i in 0..<numSamples {
-                    channelData[i] = floatChannelData[ch][i]
-                }
-            }
-            channelArrays.append(channelData)
-        }
-
-        // Convert to contiguous raw float data for the C++ bridge
-        // The AudioBufferResource constructor takes float** channel pointers
-        // We need to provide pointers to contiguous channel data
-        return channelArrays.withUnsafeMutablePointers { pointers in
-            // Create array of UnsafeMutablePointer<Float>? for C interop
-            var mutablePointers: [UnsafeMutablePointer<Float>?] = pointers.map { $0 }
-
-            return mutablePointers.withUnsafeMutableBufferPointer { buf in
-                runtime.addAudioBuffer(
-                    std.string(key),
-                    buf.baseAddress!,
-                    numChannels,
-                    numSamples
-                )
-            }
-        }
+        return loadFromPCMBuffer(runtime: runtime, key: key, buffer: buffer, numChannels: numChannels, numSamples: numSamples)
     }
 
-    /// Remove a previously loaded audio resource from the VFS.
-    /// Resources are pruned via `gc()` when they're no longer referenced by the graph.
-    public static func unloadAudioFile(key: String) {
+    /// Run garbage collection on the runtime to prune unreferenced VFS resources.
+    public static func gc() {
         ElemRuntime.getInstance().gc()
     }
-}
 
-// MARK: - Array Unsafe Mutable Pointer Helper
+    // MARK: - Private
 
-private extension Array where Element == [Float] {
-    func withUnsafeMutablePointers<R>(
-        _ body: ([UnsafeMutablePointer<Float>]) throws -> R
-    ) rethrows -> R {
-        // Create mutable copies so we can get mutable pointers
-        var mutableArrays = self.map { $0 }
-        return try mutableArrays.withUnsafeMutableBufferPointers { pointers in
-            let basePointers = pointers.map { $0.baseAddress! }
-            return try body(basePointers)
+    /// Copies deinterleaved channel data from the PCM buffer into the runtime's shared resource map.
+    private static func loadFromPCMBuffer(
+        runtime: ElemRuntime,
+        key: String,
+        buffer: AVAudioPCMBuffer,
+        numChannels: Int,
+        numSamples: Int
+    ) -> Bool {
+        guard let floatChannelData = buffer.floatChannelData else { return false }
+
+        // Allocate temporary per-channel buffers for C++ interop.
+        // addAudioBuffer copies data into AudioBufferResource, so we
+        // deallocate these after the call returns.
+        var channelBuffers: [UnsafeMutablePointer<Float>] = []
+        for ch in 0..<numChannels {
+            let ptr = UnsafeMutablePointer<Float>.allocate(capacity: numSamples)
+            ptr.initialize(from: floatChannelData[ch], count: numSamples)
+            channelBuffers.append(ptr)
         }
-    }
-}
 
-private extension Array where Element == [Float] {
-    func withUnsafeMutableBufferPointers<R>(
-        _ body: ([UnsafeMutableBufferPointer<Float>]) throws -> R
-    ) rethrows -> R {
-        var arrays = self
-        var buffers: [UnsafeMutableBufferPointer<Float>] = []
-        for i in arrays.indices {
-            buffers.append(UnsafeMutableBufferPointer(start: &arrays[i], count: arrays[i].count))
+        defer {
+            for ptr in channelBuffers {
+                ptr.deallocate()
+            }
         }
-        return try body(buffers)
+
+        // Build pointer array for the float** parameter
+        var channelPtrs: [UnsafeMutablePointer<Float>?] = channelBuffers.map { Optional($0) }
+        return channelPtrs.withUnsafeMutableBufferPointer { buf in
+            runtime.addAudioBuffer(
+                std.string(key),
+                buf.baseAddress!,
+                numChannels,
+                numSamples
+            )
+        }
     }
 }

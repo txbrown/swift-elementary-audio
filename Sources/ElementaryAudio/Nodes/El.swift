@@ -30,13 +30,13 @@ public enum El {
         Signal(ConstNode(value))
     }
 
-    /// Creates a constant signal with a key for live updates via setProperty
+    /// Creates a constant signal with a key for live updates.
     ///
-    /// This is essential for parameters that change during playback (tempo, mute, etc.)
-    /// without rebuilding the entire graph.
+    /// The `key` enables in-place value updates via `setProperty(nodeId:key:value:)`
+    /// without rebuilding the graph.
     ///
     /// - Parameters:
-    ///   - key: Unique key for setProperty targeting
+    ///   - key: Unique key for runtime property updates
     ///   - value: The constant value
     /// - Returns: A keyed constant signal
     public static func const(key: String, value: Double) -> Signal {
@@ -360,14 +360,13 @@ public enum El {
 
     // MARK: - Sequences
 
-    /// Creates a step sequencer with keyed identity (seq2)
+    /// Steps through a pattern of values on each trigger pulse (seq2).
     ///
-    /// This is the core sequencing primitive that steps through a pattern of
-    /// values on each trigger pulse. The `key` prop ensures that setProperty
-    /// updates to the `seq` array don't reset the counter position.
+    /// The `key` enables in-place `seq` updates via `setPropertyArray`
+    /// without resetting the counter position.
     ///
     /// - Parameters:
-    ///   - key: Unique key for in-place seq updates via setPropertyArray
+    ///   - key: Unique key for in-place seq updates
     ///   - seq: Array of values to sequence through
     ///   - hold: Whether to hold values between steps (default true)
     ///   - loop: Whether to loop the sequence (default true)
@@ -416,7 +415,7 @@ public enum El {
     /// - Parameters:
     ///   - path: VFS key of the loaded audio resource
     ///   - mode: Playback mode ("trigger" or "gate")
-    ///   - key: Optional unique key for setProperty targeting
+    ///   - key: Optional unique key for in-place updates
     ///   - trigger: Trigger signal (plays sample on rising edge)
     ///   - rate: Playback rate (1.0 = normal, 2.0 = octave up, etc.)
     /// - Returns: The sample playback signal
@@ -426,10 +425,10 @@ public enum El {
 
     // MARK: - Multiply
 
-    /// Element-wise multiplication of two signals
+    /// Element-wise multiplication of two signals.
     ///
-    /// While the `*` operator handles multiply on Signal, `El.mul` provides
-    /// the explicit DSP graph node with optional keying.
+    /// Prefer the `*` operator for simple multiplication. Use `El.mul` when
+    /// building the explicit DSP graph node (e.g., for keyed updates via `MulNode`).
     ///
     /// - Parameters:
     ///   - a: First signal

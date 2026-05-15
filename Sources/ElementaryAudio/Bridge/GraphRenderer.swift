@@ -197,9 +197,7 @@ public final class GraphRenderer: @unchecked Sendable {
         return runtime.setPropertyNumber(nodeId.rawValue, std.string(key), value)
     }
 
-    /// Processes audio through the rendered graph
-    ///
-    /// Call this from an audio render callback to generate samples.
+    /// Processes audio through the rendered graph using an array of output channel pointers.
     ///
     /// - Parameters:
     ///   - outputData: Array of output channel buffer pointers

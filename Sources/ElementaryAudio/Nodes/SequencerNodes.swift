@@ -1,15 +1,14 @@
 import Foundation
 
-// MARK: - Seq2 (Step Seql2 — the core sequencing primitive)
+// MARK: - Seq2 (Step Sequencer)
 
 /// A step sequencer with keyed identity for in-place updates.
 ///
-/// `seq2` is the primary sequencing node in Elementary. It steps through
-/// a pattern of values on each trigger pulse, optionally holding and looping.
-/// The `key` prop ensures that property updates (via setProperty) don't
-/// reset the counter position.
+/// `seq2` steps through a pattern of values on each trigger pulse.
+/// The `key` property enables in-place `seq` array updates via
+/// `setPropertyArray(nodeId:key:value:)` without resetting the counter.
 ///
-/// This mirrors the RN app's `el.seq2({ key, seq, hold, loop }, trigger, gate)`
+/// Mirrors the RN `el.seq2({ key, seq, hold, loop }, trigger, gate)`.
 public struct Seq2Node: AudioNode {
     public static let nodeType = "seq2"
     public let nodeId = NodeID()
@@ -31,13 +30,11 @@ public struct Seq2Node: AudioNode {
 
 /// A phasor that resets to 0 on the rising edge of a gate signal.
 ///
-/// `syncphasor` is used for transport clock synchronization: it ramps from
-/// 0–1 at the given frequency, but resets to 0 when the gate transitions
-/// from 0 to 1, ensuring that playback always starts from the beginning.
+/// Ramps from 0–1 at the given frequency, resetting to 0 on the rising
+/// edge of the gate signal. Used for transport clock synchronization.
 public struct SyncPhasorNode: AudioNode {
-    // Elementary's native synced phasor node is named `sphasor`.
-    // Keep the Swift DSL surface as `El.syncphasor` to match the RN graph builder,
-    // but encode to the runtime node type that actually exists.
+    // Swift DSL uses `syncphasor` to match the RN API;
+    // the runtime node type is `sphasor`.
     public static let nodeType = "sphasor"
     public let nodeId = NodeID()
     public let children: [any AudioNode]
@@ -52,11 +49,9 @@ public struct SyncPhasorNode: AudioNode {
 
 /// A sample playback node that reads from the VFS.
 ///
-/// Supports two modes:
-/// - `"trigger"`: Plays the full sample when the trigger input goes high (drums, one-shots)
-/// - `"gate"`: Sustains while the gate is high with pitch control via rate (melodic, piano)
-///
-/// This mirrors the RN app's `el.sample({ path, mode, key }, trigger, rate)`
+/// Modes:
+/// - `"trigger"`: Plays the full sample on rising edge (drums, one-shots)
+/// - `"gate"`: Sustains while gate is high (melodic, piano)
 public struct SampleNode: AudioNode {
     public static let nodeType = "sample"
     public let nodeId = NodeID()
@@ -80,9 +75,10 @@ public struct SampleNode: AudioNode {
 
 /// Element-wise multiplication of two signals.
 ///
-/// While the `*` operator already handles multiply on `Signal`,
-/// `El.mul` provides the explicit DSP graph node for when you need
-/// a keyed multiply that can be updated via setProperty.
+/// While the `*` operator handles multiply on `Signal`,
+/// `El.mul` provides the explicit DSP graph node, primarily useful
+/// when you need a named multiply that can be updated via `setProperty`.
+/// For keyed updates, use `MulNode` directly with a `key` parameter.
 public struct MulNode: AudioNode {
     public static let nodeType = "mul"
     public let nodeId = NodeID()
@@ -101,11 +97,11 @@ public struct MulNode: AudioNode {
 
 // MARK: - Const with key
 
-/// A constant node with a key property for setProperty updates.
+/// A constant node with a key property for live updates.
 ///
-/// This is essential for live parameter changes (tempo, mute, etc.)
-/// without rebuilding the entire graph. The key allows setProperty
-/// to target this specific node.
+/// The `key` enables in-place property updates via `setProperty(nodeId:key:value:)`
+/// without rebuilding the graph. Use it for parameters that change at runtime
+/// (tempo, mute, etc.).
 public struct KeyedConstNode: AudioNode {
     public static let nodeType = "const"
     public let nodeId = NodeID()

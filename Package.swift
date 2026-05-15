@@ -11,7 +11,6 @@ let package = Package(
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
         .library(name: "ElementaryAudio", targets: ["ElementaryAudio"]),
     ],
-    dependencies: [],
     targets: [
         .target(
             name: "cxxElementaryAudio",
