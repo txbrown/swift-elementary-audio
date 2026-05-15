@@ -10,6 +10,10 @@ let package = Package(
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
         .library(name: "ElementaryAudio", targets: ["ElementaryAudio"]),
+        .library(name: "ElementaryFlow", targets: ["ElementaryFlow"]),
+    ],
+    dependencies: [
+        .package(path: "Vendor/Flow"),
     ],
     targets: [
         .target(
@@ -51,6 +55,21 @@ let package = Package(
             name: "swift-elementary-audio",
             dependencies: ["ElementaryAudio"],
             path: "Sources/swift-elementary-audio",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
+        .target(
+            name: "ElementaryFlow",
+            dependencies: [
+                "ElementaryAudio",
+                .product(name: "Flow", package: "Flow"),
+            ],
+            path: "Sources/ElementaryFlow",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
+        .executableTarget(
+            name: "ElementaryPlayground",
+            dependencies: ["ElementaryFlow"],
+            path: "Sources/ElementaryPlayground",
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
         .testTarget(
