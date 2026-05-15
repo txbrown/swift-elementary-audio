@@ -35,7 +35,10 @@ public struct Seq2Node: AudioNode {
 /// 0–1 at the given frequency, but resets to 0 when the gate transitions
 /// from 0 to 1, ensuring that playback always starts from the beginning.
 public struct SyncPhasorNode: AudioNode {
-    public static let nodeType = "syncphasor"
+    // Elementary's native synced phasor node is named `sphasor`.
+    // Keep the Swift DSL surface as `El.syncphasor` to match the RN graph builder,
+    // but encode to the runtime node type that actually exists.
+    public static let nodeType = "sphasor"
     public let nodeId = NodeID()
     public let children: [any AudioNode]
     public let properties: NodeProperties = [:]
