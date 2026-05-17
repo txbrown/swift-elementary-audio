@@ -2,17 +2,18 @@
 //  VFSLoader.swift
 //  ElementaryAudio
 //
-//  Loads audio files into the Elementary Runtime's shared resource map
-//  via AVFoundation for deinterleaved float32 buffer loading.
+//  Loads audio files into the Elementary Runtime's Virtual File System (VFS).
+//  Uses AVFoundation for file loading, then adds the deinterleaved float32
+//  data as AudioBufferResource entries via the C++ bridge.
 //
 
 import AVFoundation
 import cxxElementaryAudio
 
-/// Loads audio files into the Elementary Runtime's shared resource map.
+/// Loads audio files into the Elementary Runtime's VFS (shared resource map).
 ///
 /// The VFS is how `el.sample({ path: "kick", mode: "trigger" })` finds its audio data.
-/// Load files by key, then reference them by that key in the graph DSL.
+/// You load files by key, then reference them by that key in the graph DSL.
 public final class VFSLoader {
 
     /// Load an audio file from disk and add it to the runtime's shared resource map.
@@ -25,7 +26,11 @@ public final class VFSLoader {
     public static func loadAudioFile(key: String, filePath: String) -> Bool {
         let runtime = ElemRuntime.getInstance()
 
-        let url = URL(fileURLWithPath: filePath)
+        // Try loading via AVAudioFile
+        guard let url = URL(string: filePath) ?? URL(fileURLWithPath: filePath) as URL? else {
+            return false
+        }
+
         guard let audioFile = try? AVAudioFile(forReading: url) else {
             return false
         }
@@ -44,54 +49,56 @@ public final class VFSLoader {
             return false
         }
 
+        // Deinterleave and add to VFS
         let numChannels = Int(format.channelCount)
         let numSamples = Int(buffer.frameLength)
 
-        return loadFromPCMBuffer(runtime: runtime, key: key, buffer: buffer, numChannels: numChannels, numSamples: numSamples)
-    }
-
-    /// Run garbage collection on the runtime to prune unreferenced VFS resources.
-    public static func gc() {
-        ElemRuntime.getInstance().gc()
-    }
-
-    // MARK: - Private
-
-    /// Copies deinterleaved channel data from the PCM buffer into the runtime's shared resource map.
-    private static func loadFromPCMBuffer(
-        runtime: ElemRuntime,
-        key: String,
-        buffer: AVAudioPCMBuffer,
-        numChannels: Int,
-        numSamples: Int
-    ) -> Bool {
-        guard let floatChannelData = buffer.floatChannelData else { return false }
-
-        // Allocate temporary per-channel buffers for C++ interop.
-        // addAudioBuffer copies data into AudioBufferResource, so we
-        // deallocate these after the call returns.
-        var channelBuffers: [UnsafeMutablePointer<Float>] = []
+        // Build deinterleaved channel data
+        var channelArrays: [[Float]] = []
         for ch in 0..<numChannels {
-            let ptr = UnsafeMutablePointer<Float>.allocate(capacity: numSamples)
-            ptr.initialize(from: floatChannelData[ch], count: numSamples)
-            channelBuffers.append(ptr)
+            var channelData = [Float](repeating: 0, count: numSamples)
+            if let floatChannelData = buffer.floatChannelData {
+                for i in 0..<numSamples {
+                    channelData[i] = floatChannelData[ch][i]
+                }
+            }
+            channelArrays.append(channelData)
         }
 
-        defer {
-            for ptr in channelBuffers {
-                ptr.deallocate()
+        // Use the C++ bridge to add to the runtime's shared resource map
+        // We need to pass deinterleaved float* pointers
+        return channelArrays.withUnsafeBufferPointers { pointers in
+            var cPointers = pointers.map { $0.baseAddress! }
+            return cPointers.withUnsafeMutableBufferPointer { buf in
+                runtime.addAudioBuffer(
+                    std.string(key),
+                    buf.baseAddress!,
+                    numChannels,
+                    numSamples
+                )
             }
         }
+    }
 
-        // Build pointer array for the float** parameter
-        var channelPtrs: [UnsafeMutablePointer<Float>?] = channelBuffers.map { Optional($0) }
-        return channelPtrs.withUnsafeMutableBufferPointer { buf in
-            runtime.addAudioBuffer(
-                std.string(key),
-                buf.baseAddress!,
-                numChannels,
-                numSamples
-            )
+    /// Remove a previously loaded audio resource from the VFS.
+    /// Note: Elementary's runtime doesn't expose removeSharedResource in the public API.
+    /// Resources are pruned via `gc()` when they're no longer referenced by the graph.
+    public static func unloadAudioFile(key: String) {
+        // Run GC to clean up unreferenced resources
+        ElemRuntime.getInstance().gc()
+    }
+}
+
+// MARK: - Array Unsafe Buffer Pointer Helper
+
+private extension Array where Element == [Float] {
+    func withUnsafeBufferPointers<R>(
+        _ body: ([UnsafeBufferPointer<Float>]) throws -> R
+    ) rethrows -> R {
+        var buffers: [UnsafeBufferPointer<Float>] = []
+        for array in self {
+            buffers.append(UnsafeBufferPointer(start: array, count: array.count))
         }
+        return try body(buffers)
     }
 }
