@@ -1,4 +1,5 @@
 module cxxElementaryAudio {
     header "cxxElementaryAudio.h"
+    requires cplusplus
     export *
 }
