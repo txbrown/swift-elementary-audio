@@ -14,8 +14,7 @@ import cxxElementaryAudio
 ///
 /// The VFS is how `el.sample({ path: "kick", mode: "trigger" })` finds its audio data.
 /// You load files by key, then reference them by that key in the graph DSL.
-public final class VFSLoader {
-
+public enum VFSLoader {
     /// Load an audio file from disk and add it to the runtime's shared resource map.
     ///
     /// - Parameters:
@@ -55,20 +54,23 @@ public final class VFSLoader {
 
         // Build deinterleaved channel data
         var channelArrays: [[Float]] = []
-        for ch in 0..<numChannels {
+        for ch in 0 ..< numChannels {
             var channelData = [Float](repeating: 0, count: numSamples)
             if let floatChannelData = buffer.floatChannelData {
-                for i in 0..<numSamples {
+                for i in 0 ..< numSamples {
                     channelData[i] = floatChannelData[ch][i]
                 }
             }
             channelArrays.append(channelData)
         }
 
-        // Use the C++ bridge to add to the runtime's shared resource map
-        // We need to pass deinterleaved float* pointers
+        // addAudioBuffer expects float** (mutable channel pointers).
+        // The C++ function only reads the data; UnsafeMutablePointer(mutating:) avoids
+        // the lifetime issue of escaping inner mutable pointers from nested closures.
         return channelArrays.withUnsafeBufferPointers { pointers in
-            var cPointers = pointers.map { $0.baseAddress! }
+            var cPointers: [UnsafeMutablePointer<Float>?] = pointers.map {
+                UnsafeMutablePointer(mutating: $0.baseAddress!)
+            }
             return cPointers.withUnsafeMutableBufferPointer { buf in
                 runtime.addAudioBuffer(
                     std.string(key),
@@ -83,7 +85,7 @@ public final class VFSLoader {
     /// Remove a previously loaded audio resource from the VFS.
     /// Note: Elementary's runtime doesn't expose removeSharedResource in the public API.
     /// Resources are pruned via `gc()` when they're no longer referenced by the graph.
-    public static func unloadAudioFile(key: String) {
+    public static func unloadAudioFile(key _: String) {
         // Run GC to clean up unreferenced resources
         ElemRuntime.getInstance().gc()
     }
@@ -91,7 +93,7 @@ public final class VFSLoader {
 
 // MARK: - Array Unsafe Buffer Pointer Helper
 
-private extension Array where Element == [Float] {
+private extension [[Float]] {
     func withUnsafeBufferPointers<R>(
         _ body: ([UnsafeBufferPointer<Float>]) throws -> R
     ) rethrows -> R {
