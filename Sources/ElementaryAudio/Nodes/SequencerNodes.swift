@@ -2,11 +2,13 @@ import Foundation
 
 // MARK: - Seq2 (Step Sequencer)
 
-/// A step sequencer with keyed identity for in-place updates.
+/// A step sequencer with keyed identity for stable graph updates.
 ///
 /// `seq2` steps through a pattern of values on each trigger pulse.
-/// The `key` property enables in-place `seq` array updates via
-/// `setPropertyArray(nodeId:key:value:)` without resetting the counter.
+/// The `key` is stored in the node's properties so the Elementary runtime
+/// can match this node across successive graph renders, preserving the counter
+/// position. Property updates use `GraphRenderer.setProperty(nodeId:key:value:)`
+/// where `nodeId` is this node's identifier.
 ///
 /// Mirrors the RN `el.seq2({ key, seq, hold, loop }, trigger, gate)`.
 public struct Seq2Node: AudioNode {
@@ -16,12 +18,12 @@ public struct Seq2Node: AudioNode {
     public let properties: NodeProperties
 
     public init(key: String, seq: [Double], hold: Bool = true, loop: Bool = true, trigger: any AudioNode, gate: any AudioNode) {
-        self.children = [trigger, gate]
-        self.properties = [
+        children = [trigger, gate]
+        properties = [
             "key": .string(key),
             "seq": .array(seq),
             "hold": .boolean(hold),
-            "loop": .boolean(loop),
+            "loop": .boolean(loop)
         ]
     }
 }
@@ -41,7 +43,7 @@ public struct SyncPhasorNode: AudioNode {
     public let properties: NodeProperties = [:]
 
     public init(frequency: any AudioNode, reset: any AudioNode) {
-        self.children = [frequency, reset]
+        children = [frequency, reset]
     }
 }
 
@@ -59,15 +61,15 @@ public struct SampleNode: AudioNode {
     public let properties: NodeProperties
 
     public init(path: String, mode: String = "trigger", key: String? = nil, trigger: any AudioNode, rate: any AudioNode) {
-        self.children = [trigger, rate]
+        children = [trigger, rate]
         var props: NodeProperties = [
             "path": .string(path),
-            "mode": .string(mode),
+            "mode": .string(mode)
         ]
-        if let key = key {
+        if let key {
             props["key"] = .string(key)
         }
-        self.properties = props
+        properties = props
     }
 }
 
@@ -76,9 +78,9 @@ public struct SampleNode: AudioNode {
 /// Element-wise multiplication of two signals.
 ///
 /// While the `*` operator handles multiply on `Signal`,
-/// `El.mul` provides the explicit DSP graph node, primarily useful
-/// when you need a named multiply that can be updated via `setProperty`.
-/// For keyed updates, use `MulNode` directly with a `key` parameter.
+/// `El.mul` provides the explicit DSP graph node.
+/// Pass an optional `key` to give the node a stable identity across graph
+/// renders; property updates still require the node's `nodeId`.
 public struct MulNode: AudioNode {
     public static let nodeType = "mul"
     public let nodeId = NodeID()
@@ -86,22 +88,23 @@ public struct MulNode: AudioNode {
     public let properties: NodeProperties
 
     public init(_ a: any AudioNode, _ b: any AudioNode, key: String? = nil) {
-        self.children = [a, b]
+        children = [a, b]
         var props: NodeProperties = [:]
-        if let key = key {
+        if let key {
             props["key"] = .string(key)
         }
-        self.properties = props
+        properties = props
     }
 }
 
 // MARK: - Const with key
 
-/// A constant node with a key property for live updates.
+/// A constant node with a stable identity for in-place graph updates.
 ///
-/// The `key` enables in-place property updates via `setProperty(nodeId:key:value:)`
-/// without rebuilding the graph. Use it for parameters that change at runtime
-/// (tempo, mute, etc.).
+/// The `key` is stored in the node's properties so the Elementary runtime can
+/// match this node across successive graph renders. To change the value at
+/// runtime, call `GraphRenderer.setProperty(nodeId:key:value:)` where
+/// `nodeId` is this node's identifier and `key` is `"value"`.
 public struct KeyedConstNode: AudioNode {
     public static let nodeType = "const"
     public let nodeId = NodeID()
@@ -109,9 +112,9 @@ public struct KeyedConstNode: AudioNode {
     public let properties: NodeProperties
 
     public init(key: String, value: Double) {
-        self.properties = [
+        properties = [
             "key": .string(key),
-            "value": .number(value),
+            "value": .number(value)
         ]
     }
 }

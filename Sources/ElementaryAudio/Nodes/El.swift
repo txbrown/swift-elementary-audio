@@ -30,13 +30,15 @@ public enum El {
         Signal(ConstNode(value))
     }
 
-    /// Creates a constant signal with a key for live updates.
+    /// Creates a constant signal with a stable identity for in-place graph updates.
     ///
-    /// The `key` enables in-place value updates via `setProperty(nodeId:key:value:)`
-    /// without rebuilding the graph.
+    /// The `key` is stored in the node's properties so the Elementary runtime can
+    /// match this node across renders. To update the value, call
+    /// `GraphRenderer.setProperty(nodeId:key:value:)` using the node's `nodeId`
+    /// and the property key `"value"`.
     ///
     /// - Parameters:
-    ///   - key: Unique key for runtime property updates
+    ///   - key: Stable identity string for the Elementary runtime
     ///   - value: The constant value
     /// - Returns: A keyed constant signal
     public static func const(key: String, value: Double) -> Signal {
@@ -126,6 +128,7 @@ public enum El {
     }
 
     // MARK: - Comparison & Binary Math
+
     //
     // These mirror the operator overloads in NodeOperators.swift (<, <=, >, >=, %).
     // Both APIs are intentional: operators enable natural math-like expressions
@@ -410,12 +413,12 @@ public enum El {
 
     // MARK: - Sample Playback
 
-    /// Plays a sample from the VFS in trigger mode (drums, one-shots)
+    /// Plays a sample from the VFS.
     ///
     /// - Parameters:
-    ///   - path: VFS key of the loaded audio resource
-    ///   - mode: Playback mode ("trigger" or "gate")
-    ///   - key: Optional unique key for in-place updates
+    ///   - path: VFS key of the loaded audio resource (see `VFSLoader.loadAudioFile`)
+    ///   - mode: Playback mode (`"trigger"` = one-shot on rising edge, `"gate"` = sustain while high)
+    ///   - key: Optional stable identity for this node across graph renders
     ///   - trigger: Trigger signal (plays sample on rising edge)
     ///   - rate: Playback rate (1.0 = normal, 2.0 = octave up, etc.)
     /// - Returns: The sample playback signal
@@ -428,7 +431,8 @@ public enum El {
     /// Element-wise multiplication of two signals.
     ///
     /// Prefer the `*` operator for simple multiplication. Use `El.mul` when
-    /// building the explicit DSP graph node (e.g., for keyed updates via `MulNode`).
+    /// you need the explicit `MulNode` graph node (e.g., to pass a `key` for
+    /// stable node identity across graph renders).
     ///
     /// - Parameters:
     ///   - a: First signal
@@ -492,7 +496,7 @@ public enum El {
 
 // MARK: - Pi Constant
 
-extension Double {
+public extension Double {
     /// The mathematical constant pi, for convenience in DSL expressions
-    public static let pi = Double.pi
+    static let pi = Double.pi
 }

@@ -82,11 +82,12 @@ public enum VFSLoader {
         }
     }
 
-    /// Remove a previously loaded audio resource from the VFS.
-    /// Note: Elementary's runtime doesn't expose removeSharedResource in the public API.
-    /// Resources are pruned via `gc()` when they're no longer referenced by the graph.
-    public static func unloadAudioFile(key _: String) {
-        // Run GC to clean up unreferenced resources
+    /// Triggers garbage collection to prune audio resources no longer referenced by the graph.
+    ///
+    /// Elementary's C++ runtime does not expose key-based removal of shared resources.
+    /// To free a resource, stop referencing its key in the graph, re-render, then call
+    /// this method. The runtime will collect entries with a zero reference count.
+    public static func pruneUnreferencedResources() {
         ElemRuntime.getInstance().gc()
     }
 }
@@ -94,13 +95,27 @@ public enum VFSLoader {
 // MARK: - Array Unsafe Buffer Pointer Helper
 
 private extension [[Float]] {
+    /// Calls `body` with an array of buffer pointers, each pinned for the duration of the call.
+    ///
+    /// Uses recursive `withUnsafeBufferPointer` nesting so all channel arrays are
+    /// simultaneously pinned when `body` runs. Passing a raw `UnsafeBufferPointer`
+    /// constructed outside a `withUnsafeBufferPointer` scope is unsafe because the
+    /// array's contiguous storage is only guaranteed valid inside that scope.
     func withUnsafeBufferPointers<R>(
         _ body: ([UnsafeBufferPointer<Float>]) throws -> R
     ) rethrows -> R {
-        var buffers: [UnsafeBufferPointer<Float>] = []
-        for array in self {
-            buffers.append(UnsafeBufferPointer(start: array, count: array.count))
+        func recurse(index: Int, into accumulated: inout [UnsafeBufferPointer<Float>]) throws -> R {
+            if index == endIndex {
+                return try body(accumulated)
+            }
+            return try self[index].withUnsafeBufferPointer { ptr in
+                accumulated.append(ptr)
+                defer { accumulated.removeLast() }
+                return try recurse(index: index + 1, into: &accumulated)
+            }
         }
-        return try body(buffers)
+        var acc: [UnsafeBufferPointer<Float>] = []
+        acc.reserveCapacity(count)
+        return try recurse(index: startIndex, into: &acc)
     }
 }
