@@ -1,6 +1,6 @@
-import XCTest
 import cxxElementaryAudio
 @testable import ElementaryAudio
+import XCTest
 
 final class GraphRendererProcessTests: XCTestCase {
     private var renderer: GraphRenderer!
@@ -45,7 +45,7 @@ final class GraphRendererProcessTests: XCTestCase {
 
         // Process a few blocks (first may be activation latency)
         var foundNonZero = false
-        for _ in 0..<4 {
+        for _ in 0 ..< 4 {
             let samples = processBlock(numSamples: 512)
             let maxAmp = samples.map { Swift.abs($0) }.max() ?? 0
             if maxAmp > 0.1 {
@@ -63,7 +63,7 @@ final class GraphRendererProcessTests: XCTestCase {
         }
         try renderer.render(graph)
 
-        for _ in 0..<10 {
+        for _ in 0 ..< 10 {
             let samples = processBlock(numSamples: 512)
             for sample in samples {
                 XCTAssertGreaterThanOrEqual(sample, -1.0)
@@ -99,7 +99,7 @@ final class GraphRendererProcessTests: XCTestCase {
         try renderer.render(graph)
 
         // Warm up
-        for _ in 0..<3 {
+        for _ in 0 ..< 3 {
             _ = processBlock(numSamples: 512)
         }
 
@@ -108,7 +108,7 @@ final class GraphRendererProcessTests: XCTestCase {
 
         // Check that output changes within a few blocks
         var foundChanged = false
-        for _ in 0..<4 {
+        for _ in 0 ..< 4 {
             let samples = processBlock(numSamples: 512)
             if Swift.abs(samples[0] - 0.9) < 0.01 {
                 foundChanged = true
@@ -116,6 +116,38 @@ final class GraphRendererProcessTests: XCTestCase {
             }
         }
         XCTAssertTrue(foundChanged, "setProperty should eventually change the output")
+    }
+
+    // MARK: - Array-based process overload
+
+    func testArrayProcessOverloadProducesNonSilentAudioFromSineGraph() throws {
+        let graph = AudioGraph { El.cycle(440.0) }
+        try renderer.render(graph)
+
+        // Warm up past activation latency using the raw-pointer overload
+        for _ in 0 ..< 4 { _ = processBlock(numSamples: 512) }
+
+        // Now use the array overload in the same runtime session
+        var arraySamples = [Float](repeating: 0, count: 512)
+        arraySamples.withUnsafeMutableBufferPointer { bufPtr in
+            let optionalPtr: UnsafeMutablePointer<Float>? = bufPtr.baseAddress
+            renderer.process(outputData: [optionalPtr], outputChannels: 1, numSamples: 512)
+        }
+
+        let arrMax = arraySamples.map { Swift.abs($0) }.max() ?? 0
+        XCTAssertGreaterThan(arrMax, 0.0, "array-overload must produce audio after graph is rendered")
+        XCTAssertLessThanOrEqual(arrMax, 1.0, "array-overload output must be in [-1, 1]")
+    }
+
+    func testArrayProcessOverloadDoesNotCrashWithoutGraph() {
+        // Exercises the pointer-bridging path without asserting on sample values,
+        // since the ElemRuntime singleton may carry state from earlier tests.
+        var buf = [Float](repeating: 0, count: 64)
+        buf.withUnsafeMutableBufferPointer { bufPtr in
+            let optPtr: UnsafeMutablePointer<Float>? = bufPtr.baseAddress
+            renderer.process(outputData: [optPtr], outputChannels: 1, numSamples: 64)
+        }
+        // Pass — just verifying no crash or memory fault in the array-overload path
     }
 
     // MARK: - Integration
@@ -128,7 +160,7 @@ final class GraphRendererProcessTests: XCTestCase {
         }
         try renderer.render(graph)
 
-        for _ in 0..<20 {
+        for _ in 0 ..< 20 {
             _ = processBlock(numSamples: 128)
         }
     }

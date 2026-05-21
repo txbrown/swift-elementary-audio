@@ -14,8 +14,7 @@ import cxxElementaryAudio
 ///
 /// The VFS is how `el.sample({ path: "kick", mode: "trigger" })` finds its audio data.
 /// You load files by key, then reference them by that key in the graph DSL.
-public final class VFSLoader {
-
+public enum VFSLoader {
     /// Load an audio file from disk and add it to the runtime's shared resource map.
     ///
     /// - Parameters:
@@ -55,20 +54,23 @@ public final class VFSLoader {
 
         // Build deinterleaved channel data
         var channelArrays: [[Float]] = []
-        for ch in 0..<numChannels {
+        for ch in 0 ..< numChannels {
             var channelData = [Float](repeating: 0, count: numSamples)
             if let floatChannelData = buffer.floatChannelData {
-                for i in 0..<numSamples {
+                for i in 0 ..< numSamples {
                     channelData[i] = floatChannelData[ch][i]
                 }
             }
             channelArrays.append(channelData)
         }
 
-        // Use the C++ bridge to add to the runtime's shared resource map
-        // We need to pass deinterleaved float* pointers
+        // addAudioBuffer expects float** (mutable channel pointers).
+        // The C++ function only reads the data; UnsafeMutablePointer(mutating:) avoids
+        // the lifetime issue of escaping inner mutable pointers from nested closures.
         return channelArrays.withUnsafeBufferPointers { pointers in
-            var cPointers = pointers.map { $0.baseAddress! }
+            var cPointers: [UnsafeMutablePointer<Float>?] = pointers.map {
+                UnsafeMutablePointer(mutating: $0.baseAddress!)
+            }
             return cPointers.withUnsafeMutableBufferPointer { buf in
                 runtime.addAudioBuffer(
                     std.string(key),
@@ -80,25 +82,40 @@ public final class VFSLoader {
         }
     }
 
-    /// Remove a previously loaded audio resource from the VFS.
-    /// Note: Elementary's runtime doesn't expose removeSharedResource in the public API.
-    /// Resources are pruned via `gc()` when they're no longer referenced by the graph.
-    public static func unloadAudioFile(key: String) {
-        // Run GC to clean up unreferenced resources
+    /// Triggers garbage collection to prune audio resources no longer referenced by the graph.
+    ///
+    /// Elementary's C++ runtime does not expose key-based removal of shared resources.
+    /// To free a resource, stop referencing its key in the graph, re-render, then call
+    /// this method. The runtime will collect entries with a zero reference count.
+    public static func pruneUnreferencedResources() {
         ElemRuntime.getInstance().gc()
     }
 }
 
 // MARK: - Array Unsafe Buffer Pointer Helper
 
-private extension Array where Element == [Float] {
+private extension [[Float]] {
+    /// Calls `body` with an array of buffer pointers, each pinned for the duration of the call.
+    ///
+    /// Uses recursive `withUnsafeBufferPointer` nesting so all channel arrays are
+    /// simultaneously pinned when `body` runs. Passing a raw `UnsafeBufferPointer`
+    /// constructed outside a `withUnsafeBufferPointer` scope is unsafe because the
+    /// array's contiguous storage is only guaranteed valid inside that scope.
     func withUnsafeBufferPointers<R>(
         _ body: ([UnsafeBufferPointer<Float>]) throws -> R
     ) rethrows -> R {
-        var buffers: [UnsafeBufferPointer<Float>] = []
-        for array in self {
-            buffers.append(UnsafeBufferPointer(start: array, count: array.count))
+        func recurse(index: Int, into accumulated: inout [UnsafeBufferPointer<Float>]) throws -> R {
+            if index == endIndex {
+                return try body(accumulated)
+            }
+            return try self[index].withUnsafeBufferPointer { ptr in
+                accumulated.append(ptr)
+                defer { accumulated.removeLast() }
+                return try recurse(index: index + 1, into: &accumulated)
+            }
         }
-        return try body(buffers)
+        var acc: [UnsafeBufferPointer<Float>] = []
+        acc.reserveCapacity(count)
+        return try recurse(index: startIndex, into: &acc)
     }
 }

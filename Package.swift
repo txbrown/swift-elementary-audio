@@ -5,15 +5,15 @@ let package = Package(
     name: "swift-elementary-audio",
     platforms: [
         .macOS("13.3"), // C++ interop requires >=13.3; no enum case available
-        .iOS("16.4"),   // C++ interop requires >=16.4; no enum case available
+        .iOS("16.4") // C++ interop requires >=16.4; no enum case available
     ],
     products: [
         .library(name: "cxxElementaryAudio", targets: ["cxxElementaryAudio"]),
         .library(name: "ElementaryAudio", targets: ["ElementaryAudio"]),
-        .library(name: "ElementaryFlow", targets: ["ElementaryFlow"]),
+        .library(name: "ElementaryFlow", targets: ["ElementaryFlow"])
     ],
     dependencies: [
-        .package(path: "Vendor/Flow"),
+        .package(path: "Vendor/Flow")
     ],
     targets: [
         .target(
@@ -29,20 +29,20 @@ let package = Package(
                 "ElementaryAudio/runtime/elem/third-party/signalsmith-stretch/dsp/LICENSE.txt",
                 // choc is header-only — exclude the entire directory from compilation
                 // (headers are still found via headerSearchPath)
-                "ElementaryAudio/runtime/elem/third-party/choc",
+                "ElementaryAudio/runtime/elem/third-party/choc"
             ],
             sources: [
                 "./ElementaryAudio/runtime",
-                "CustomNode.cpp",
+                "CustomNode.cpp"
             ],
             publicHeadersPath: "include",
             cxxSettings: [
                 .headerSearchPath("./ElementaryAudio/runtime"),
                 .headerSearchPath("."),
-                .define("SWIFT_BRIDGING_ENABLED", to: "1"),
+                .define("SWIFT_BRIDGING_ENABLED", to: "1")
             ],
             linkerSettings: [
-                .linkedLibrary("c++"),
+                .linkedLibrary("c++")
             ]
         ),
         .target(
@@ -61,7 +61,7 @@ let package = Package(
             name: "ElementaryFlow",
             dependencies: [
                 "ElementaryAudio",
-                .product(name: "Flow", package: "Flow"),
+                .product(name: "Flow", package: "Flow")
             ],
             path: "Sources/ElementaryFlow",
             swiftSettings: [.interoperabilityMode(.Cxx)]
@@ -77,7 +77,7 @@ let package = Package(
             dependencies: ["ElementaryAudio"],
             path: "Tests/ElementaryAudioTests",
             swiftSettings: [.interoperabilityMode(.Cxx)]
-        ),
+        )
     ],
     cxxLanguageStandard: .cxx20
 )

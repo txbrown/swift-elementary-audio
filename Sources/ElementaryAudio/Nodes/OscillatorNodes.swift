@@ -56,7 +56,9 @@ public struct BlepTriangleNode: AudioNode {
 
 /// A white noise generator
 public struct NoiseNode: AudioNode {
-    public static let nodeType = "noise"
+    // Elementary runtime exposes white noise as `rand`;
+    // Swift DSL uses `El.noise()` to match the RN API.
+    public static let nodeType = "rand"
     public let nodeId = NodeID()
     public let children: [any AudioNode] = []
     public let properties: NodeProperties = [:]
